@@ -1,6 +1,7 @@
 import copy
 import operator
 import time
+import math
 #import heapq as hq
 
 goal_state_1 = [[1, 2, 3], [4, 5, 6], [7, 8, 0]]
@@ -75,6 +76,30 @@ class Node:
                         num_misplaced_tiles += 1
         
         self.estimated_cost = num_misplaced_tiles
+    
+    # sqrt of the sum of the current_puzzle^2 plus second_puzzle^2
+    def get_euclidean_distance_heuristic(self):
+        distances_to_sum = []
+        total_distance = 0
+
+        for i in range(len(self.state)):
+            for j in range(len(self.state[i])):
+                if(self.state[i][j] == goal_state_1[i][j] or self.state[i][j] == goal_state_2[i][j] or self.state[i][j] == 0):
+                    if goal_state_flag == 1:
+                        goal_row, goal_column = get_row_column_index(goal_state_1, self.state[i][j])
+                        distances_to_sum.append(pow((i - goal_row), 2) + pow((j - goal_column), 2))
+                    if goal_state_flag == 2:
+                        goal_row, goal_column = get_row_column_index(goal_state_2, self.state[i][j])
+                        distances_to_sum.append(pow((i - goal_row), 2) + pow((j - goal_column), 2))
+        
+        for i in distances_to_sum:
+            total_distance += i
+            #for j in range(len(distances_to_sum[i])):
+            #    total_distance += distances_to_sum[i][j]
+
+        self.estimated_cost = math.sqrt(total_distance)
+        #print(self.estimated_cost)
+
 
     # Combine to approximate cost and estimated cost to get the total cost of cheapest solution
     def get_total_cost(self):
@@ -278,7 +303,6 @@ def A_star_misplaced_tile(tree):
         if(current_node.goal_test()):
             solution_path, path_cost = get_path(tree.starting_state, current_node)
             print(f"Path cost is: g(n)={path_cost}")
-            print("Branching")
             print_path(solution_path)
             return solution_path # MIGHT NEED TO PUT THIS OUTSIDE OF THE WHILE LOOP TO LOOK AT BETTER SOLUTION PATHS
         
@@ -313,6 +337,72 @@ def A_star_misplaced_tile(tree):
                     #hq.heappush(frontier, (current_node.child_down.cost, current_node.child_down))
 
 
+
+# Use euclidean distance heuristic so that the search algorithm is not blind but informed
+def A_star_euclidean_distance(tree):
+    frontier = [] # Priority Queue
+    #hq.heappush(frontier, (tree.starting_state.cost ,tree.starting_state))
+    tree.starting_state.get_euclidean_distance_heuristic()
+    tree.starting_state.get_total_cost()
+    frontier.append(tree.starting_state)
+    
+    visited = []
+
+    while(frontier): # loop until frontier is empty
+        if(not frontier):
+            print("Frontier is empty and no solution was found!")
+            return
+
+        frontier.sort(key=operator.attrgetter('total_cost'))
+        current_node = frontier.pop(0)
+        
+        #hq.heapify(frontier)
+        #node = hq.heappop(frontier)
+        #current_node = node[1]
+        
+        #print("\n")
+        #current_node.print_current_state()
+        #print("Current Node Cost")
+        #print(current_node.cost)
+        #print("Branching Factor:")
+        #print(current_node.get_branching_factor())
+        #print("\n")
+
+        if(current_node.goal_test()):
+            solution_path, path_cost = get_path(tree.starting_state, current_node)
+            print(f"Path cost is: g(n)={path_cost}")
+            print_path(solution_path)
+            return solution_path # MIGHT NEED TO PUT THIS OUTSIDE OF THE WHILE LOOP TO LOOK AT BETTER SOLUTION PATHS
+        
+        visited.append(current_node.state) # THIS MIGHT BE THE ERROR WHERE I AM COMPARING THE MATRIX ITSELF INSTEAD OF THE NODE(CONTAINS THE MATRIX, COST, ETC.)
+        
+        tree.generate_child(current_node)
+        
+        if(current_node.has_children()):
+            if(current_node.child_left != None):
+                if((current_node.child_left.state in visited) == False):
+                    current_node.child_left.get_euclidean_distance_heuristic()
+                    current_node.child_left.get_total_cost()
+                    frontier.append(current_node.child_left)
+                    #hq.heappush(frontier, (current_node.child_left.cost, current_node.child_left))
+            if(current_node.child_up != None):
+                if((current_node.child_up.state in visited) == False):
+                    current_node.child_up.get_euclidean_distance_heuristic()
+                    current_node.child_up.get_total_cost()
+                    frontier.append(current_node.child_up)
+                    #hq.heappush(frontier, (current_node.child_up.cost, current_node.child_up))
+            if(current_node.child_right != None):
+                if((current_node.child_right.state in visited) == False):
+                    current_node.child_right.get_euclidean_distance_heuristic()
+                    current_node.child_right.get_total_cost()
+                    frontier.append(current_node.child_right)
+                    #hq.heappush(frontier, (current_node.child_right.cost, current_node.child_right))
+            if(current_node.child_down != None):
+                if((current_node.child_down.state in visited) == False):
+                    current_node.child_down.get_euclidean_distance_heuristic()
+                    current_node.child_down.get_total_cost()
+                    frontier.append(current_node.child_down)
+                    #hq.heappush(frontier, (current_node.child_down.cost, current_node.child_down))
 
 
 
@@ -389,11 +479,11 @@ def main():
         A_star_misplaced_tile(tree)
         end_time = time.perf_counter()
         print(f"Solution found in {end_time - init_time} seconds")
-        
+
     else:
         print("\nAlgorithm chosen is A* with the Euclidean distance heuristic")
         init_time = time.perf_counter()
-        A_star_misplaced_tile(tree)
+        A_star_euclidean_distance(tree)
         end_time = time.perf_counter()
         print(f"Solution found in {end_time - init_time} seconds")
 
